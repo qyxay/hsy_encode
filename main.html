@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8叉哈夫曼加密工具</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 统一的 Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#6366f1',
+                        accent: '#8b5cf6',
+                        dark: '#1e293b',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .glass {
+                background: rgba(255, 255, 255, 0.25);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+            }
+            .glass-dark {
+                background: rgba(30, 41, 59, 0.75);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .transition-all-300 {
+                transition: all 0.3s ease;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 头部 -->
+        <header class="text-center mb-12 animate-fade-in">
+            <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent mb-4 text-shadow">
+                8叉哈夫曼加密工具
+            </h1>
+            <p class="text-gray-600 dark:text-gray-300 text-lg max-w-2xl mx-auto">
+                结合哈夫曼编码与异或加密的高级加密工具，支持中文加密，提供高安全性与数据压缩
+            </p>
+        </header>
+
+        <!-- 主要内容 -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 加密面板 -->
+            <div class="glass dark:glass-dark rounded-2xl p-6 shadow-lg animate-slide-in" style="animation-delay: 0.1s;">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mr-3">
+                        <i class="fa fa-lock"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">加密</h2>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="encrypt-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            输入明文
+                        </label>
+                        <textarea 
+                            id="encrypt-input" 
+                            rows="4" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-all-300 resize-none"
+                            placeholder="请输入要加密的文本..."
+                        ></textarea>
+                    </div>
+                    
+                    <button 
+                        id="encrypt-btn" 
+                        class="w-full bg-gradient-to-r from-primary to-secondary text-white font-medium py-3 px-6 rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                    >
+                        <i class="fa fa-magic mr-2"></i>开始加密
+                    </button>
+                    
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            加密结果
+                        </label>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">密文</label>
+                                <div 
+                                    id="cipher-text" 
+                                    class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[80px] max-h-[120px] overflow-y-auto"
+                                ></div>
+                                <button 
+                                    id="copy-cipher" 
+                                    class="mt-1 text-xs text-primary hover:text-primary-dark focus:outline-none"
+                                >
+                                    <i class="fa fa-copy mr-1"></i>复制密文
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">哈夫曼密钥</label>
+                                <div 
+                                    id="huffman-key" 
+                                    class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[60px] max-h-[100px] overflow-y-auto text-sm font-mono"
+                                ></div>
+                                <button 
+                                    id="copy-key" 
+                                    class="mt-1 text-xs text-primary hover:text-primary-dark focus:outline-none"
+                                >
+                                    <i class="fa fa-copy mr-1"></i>复制密钥
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            加密统计
+                        </label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">原始大小</div>
+                                <div id="original-size" class="text-lg font-semibold text-gray-800 dark:text-white">0 字节</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">压缩后大小</div>
+                                <div id="encoded-size" class="text-lg font-semibold text-gray-800 dark:text-white">0 位</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">压缩率</div>
+                                <div id="compression-ratio" class="text-lg font-semibold text-gray-800 dark:text-white">0.0x</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">加密耗时</div>
+                                <div id="encrypt-time" class="text-lg font-semibold text-gray-800 dark:text-white">0 ms</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 解密面板 -->
+            <div class="glass dark:glass-dark rounded-2xl p-6 shadow-lg animate-slide-in" style="animation-delay: 0.2s;">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white mr-3">
+                        <i class="fa fa-unlock"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">解密</h2>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label for="decrypt-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            输入密文
+                        </label>
+                        <textarea 
+                            id="decrypt-input" 
+                            rows="4" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-accent focus:border-accent transition-all-300 resize-none"
+                            placeholder="请输入要解密的文本..."
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label for="key-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            输入哈夫曼密钥
+                        </label>
+                        <textarea 
+                            id="key-input" 
+                            rows="3" 
+                            class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-accent focus:border-accent transition-all-300 resize-none font-mono text-sm"
+                            placeholder="请输入哈夫曼密钥，格式如: {'5':'0000','0':'0001'}..."
+                        ></textarea>
+                    </div>
+                    
+                    <button 
+                        id="decrypt-btn" 
+                        class="w-full bg-gradient-to-r from-accent to-secondary text-white font-medium py-3 px-6 rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+                    >
+                        <i class="fa fa-magic mr-2"></i>开始解密
+                    </button>
+                    
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            解密结果
+                        </label>
+                        <div>
+                            <div 
+                                id="plain-text" 
+                                class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[80px] max-h-[160px] overflow-y-auto"
+                            ></div>
+                            <button 
+                                id="copy-plain" 
+                                class="mt-1 text-xs text-accent hover:text-accent-dark focus:outline-none"
+                            >
+                                <i class="fa fa-copy mr-1"></i>复制明文
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            解密统计
+                        </label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">解密耗时</div>
+                                <div id="decrypt-time" class="text-lg font-semibold text-gray-800 dark:text-white">0 ms</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                <div class="text-xs text-gray-500 dark:text-gray-400">解密状态</div>
+                                <div id="decrypt-status" class="text-lg font-semibold text-gray-800 dark:text-white">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- 信息卡片 -->
+        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- 关于工具 -->
+            <div class="glass dark:glass-dark rounded-xl p-5 shadow-lg animate-slide-in" style="animation-delay: 0.3s;">
+                <div class="flex items-center mb-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white mr-2">
+                        <i class="fa fa-info-circle"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">关于工具</h3>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">
+                    本工具采用8叉哈夫曼编码与异或加密相结合的方式，提供高效的加密和解密功能。支持中文字符，具有较高的安全性和数据压缩特性。
+                </p>
+            </div>
+            
+            <!-- 加密原理 -->
+            <div class="glass dark:glass-dark rounded-xl p-5 shadow-lg animate-slide-in" style="animation-delay: 0.4s;">
+                <div class="flex items-center mb-4">
+                    <div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white mr-2">
+                        <i class="fa fa-lightbulb-o"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">加密原理</h3>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">
+                    加密过程包括：字符串转UTF-8八进制、异或加密、哈夫曼编码和字符映射。解密过程则反向进行，确保数据的安全传输和存储。
+                </p>
+            </div>
+            
+            <!-- 使用提示 -->
+            <div class="glass dark:glass-dark rounded-xl p-5 shadow-lg animate-slide-in" style="animation-delay: 0.5s;">
+                <div class="flex items-center mb-4">
+                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white mr-2">
+                        <i class="fa fa-check-circle"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white">使用提示</h3>
+                </div>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">
+                    使用时请妥善保存哈夫曼密钥，解密时需要输入正确的密文和对应的密钥。加密后的文本仅包含"狐拾一之异界神域"八个字符。
+                </p>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+            <p>© 2025 8叉哈夫曼加密工具 | 安全、高效的加密解决方案</p>
+        </footer>
+    </div>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed top-4 right-4 transform translate-x-full transition-transform duration-300 z-50 max-w-xs">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 flex items-center">
+            <div id="notification-icon" class="mr-3 text-lg"></div>
+            <div id="notification-message" class="text-sm font-medium text-gray-900 dark:text-gray-100"></div>
+        </div>
+    </div>
+
+    <script>
+        // 字符映射表
+        const CHAR_MAP = {
+            '0': '狐', '1': '拾', '2': '一', '3': '之',
+            '4': '异', '5': '界', '6': '神', '7': '域'
+        };
+        const REVERSE_CHAR_MAP = Object.fromEntries(Object.entries(CHAR_MAP).map(([k, v]) => [v, k]));
+        const KEY_STR = "狐拾一之异界神域";
+
+        // ===================== 哈夫曼编码相关类和函数 =====================
+        class HuffmanNode {
+            constructor(char = null, freq = 0, left = null, right = null) {
+                this.char = char;
+                this.freq = freq;
+                this.left = left;
+                this.right = right;
+            }
+
+            // 用于优先队列比较
+            compareTo(other) {
+                return this.freq - other.freq;
+            }
+        }
+
+        // 最小堆实现
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+
+            size() {
+                return this.heap.length;
+            }
+
+            isEmpty() {
+                return this.size() === 0;
+            }
+
+            push(node) {
+                this.heap.push(node);
+                this.siftUp(this.size() - 1);
+            }
+
+            pop() {
+                if (this.isEmpty()) return null;
+                const min = this.heap[0];
+                const last = this.heap.pop();
+                if (this.size() > 0) {
+                    this.heap[0] = last;
+                    this.siftDown(0);
+                }
+                return min;
+            }
+
+            siftUp(index) {
+                let parent = Math.floor((index - 1) / 2);
+                while (index > 0 && this.heap[parent].compareTo(this.heap[index]) > 0) {
+                    [this.heap[parent], this.heap[index]] = [this.heap[index], this.heap[parent]];
+                    index = parent;
+                    parent = Math.floor((index - 1) / 2);
+                }
+            }
+
+            siftDown(index) {
+                let smallest = index;
+                const left = 2 * index + 1;
+                const right = 2 * index + 2;
+                const size = this.size();
+
+                if (left < size && this.heap[left].compareTo(this.heap[smallest]) < 0) {
+                    smallest = left;
+                }
+                if (right < size && this.heap[right].compareTo(this.heap[smallest]) < 0) {
+                    smallest = right;
+                }
+                if (smallest !== index) {
+                    [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
+                    this.siftDown(smallest);
+                }
+            }
+        }
+
+        function buildHuffmanKey(node, currentCode = "", keyTable = null) {
+            if (keyTable === null) {
+                keyTable = {};
+            }
+            if (node.char !== null) {
+                keyTable[node.char] = currentCode || "0";
+                return keyTable;
+            }
+            buildHuffmanKey(node.left, currentCode + "0", keyTable);
+            buildHuffmanKey(node.right, currentCode + "1", keyTable);
+            return keyTable;
+        }
+
+        function huffmanEncode(text) {
+            // 1. 统计字符频率
+            const freq = {};
+            for (const c of text) {
+                freq[c] = (freq[c] || 0) + 1;
+            }
+
+            // 2. 构建最小堆
+            const heap = new MinHeap();
+            for (const [char, frequency] of Object.entries(freq)) {
+                heap.push(new HuffmanNode(char, frequency));
+            }
+
+            // 3. 构建哈夫曼树
+            if (heap.size() === 0) {
+                return ["", {}];
+            }
+            while (heap.size() > 1) {
+                const left = heap.pop();
+                const right = heap.pop();
+                const merged = new HuffmanNode(null, left.freq + right.freq, left, right);
+                heap.push(merged);
+            }
+            const root = heap.pop();
+
+            // 4. 生成哈夫曼密钥
+            const huffmanKey = buildHuffmanKey(root);
+
+            // 5. 编码文本
+            let encoded = "";
+            for (const c of text) {
+                encoded += huffmanKey[c];
+            }
+
+            return [encoded, huffmanKey];
+        }
+
+        function huffmanDecode(encodedText, huffmanKey) {
+            const reverseKey = {};
+            for (const [char, code] of Object.entries(huffmanKey)) {
+                reverseKey[code] = char;
+            }
+
+            let decoded = "";
+            let currentCode = "";
+            for (const bit of encodedText) {
+                currentCode += bit;
+                if (reverseKey.hasOwnProperty(currentCode)) {
+                    decoded += reverseKey[currentCode];
+                    currentCode = "";
+                }
+            }
+
+            // 兜底处理最后未匹配的残留
+            if (currentCode && reverseKey.hasOwnProperty(currentCode)) {
+                decoded += reverseKey[currentCode];
+            }
+
+            return decoded;
+        }
+
+        // ===================== 编码转换工具函数 =====================
+        function strToOctal(s) {
+            let octalList = [];
+            for (let i = 0; i < s.length; i++) {
+                const codePoint = s.codePointAt(i);
+                // 处理UTF-8编码
+                if (codePoint < 0x80) {
+                    // 1字节
+                    octalList.push(codePoint.toString(8).padStart(3, '0'));
+                } else if (codePoint < 0x800) {
+                    // 2字节
+                    octalList.push(((codePoint >> 6) | 0xC0).toString(8).padStart(3, '0'));
+                    octalList.push(((codePoint & 0x3F) | 0x80).toString(8).padStart(3, '0'));
+                } else if (codePoint < 0xD800 || codePoint >= 0xE000) {
+                    // 3字节 (非代理对)
+                    octalList.push(((codePoint >> 12) | 0xE0).toString(8).padStart(3, '0'));
+                    octalList.push(((codePoint >> 6) & 0x3F | 0x80).toString(8).padStart(3, '0'));
+                    octalList.push(((codePoint & 0x3F) | 0x80).toString(8).padStart(3, '0'));
+                } else {
+                    // 代理对处理 (4字节)
+                    i++;
+                    const low = s.codePointAt(i) || 0;
+                    const fullCode = ((codePoint - 0xD800) << 10) + (low - 0xDC00) + 0x10000;
+                    octalList.push(((fullCode >> 18) | 0xF0).toString(8).padStart(3, '0'));
+                    octalList.push(((fullCode >> 12) & 0x3F | 0x80).toString(8).padStart(3, '0'));
+                    octalList.push(((fullCode >> 6) & 0x3F | 0x80).toString(8).padStart(3, '0'));
+                    octalList.push(((fullCode & 0x3F) | 0x80).toString(8).padStart(3, '0'));
+                }
+            }
+            return octalList.join('');
+        }
+
+        function octalToStr(octalStr) {
+            // 按3位分割八进制字符串
+            const octalChunks = [];
+            for (let i = 0; i < octalStr.length; i += 3) {
+                octalChunks.push(octalStr.substring(i, i + 3));
+            }
+
+            const bytes = [];
+            for (const chunk of octalChunks) {
+                if (!chunk) continue;
+                bytes.push(parseInt(chunk, 8));
+            }
+
+            // 解码UTF-8
+            let result = '';
+            for (let i = 0; i < bytes.length; i++) {
+                const byte = bytes[i];
+                if (byte < 0x80) {
+                    // 1字节
+                    result += String.fromCharCode(byte);
+                } else if (byte < 0xE0 && i + 1 < bytes.length) {
+                    // 2字节
+                    const byte2 = bytes[++i];
+                    const codePoint = ((byte & 0x1F) << 6) | (byte2 & 0x3F);
+                    result += String.fromCharCode(codePoint);
+                } else if (byte < 0xF0 && i + 2 < bytes.length) {
+                    // 3字节
+                    const byte2 = bytes[++i];
+                    const byte3 = bytes[++i];
+                    const codePoint = ((byte & 0x0F) << 12) | ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
+                    result += String.fromCharCode(codePoint);
+                } else if (byte >= 0xF0 && i + 3 < bytes.length) {
+                    // 4字节
+                    const byte2 = bytes[++i];
+                    const byte3 = bytes[++i];
+                    const byte4 = bytes[++i];
+                    const codePoint = ((byte & 0x07) << 18) | ((byte2 & 0x3F) << 12) | 
+                                     ((byte3 & 0x3F) << 6) | (byte4 & 0x3F);
+                    // 处理超过BMP的字符
+                    if (codePoint >= 0x10000) {
+                        const high = Math.floor((codePoint - 0x10000) / 0x400) + 0xD800;
+                        const low = ((codePoint - 0x10000) % 0x400) + 0xDC00;
+                        result += String.fromCharCode(high, low);
+                    } else {
+                        result += String.fromCharCode(codePoint);
+                    }
+                }
+            }
+            return result;
+        }
+
+        // ===================== 异或加密/解密 =====================
+        function getKeyOctal() {
+            return strToOctal(KEY_STR);
+        }
+
+        function xorOctal(plainOctal, keyOctal) {
+            const result = [];
+            for (let i = 0; i < plainOctal.length; i++) {
+                const p = plainOctal[i];
+                const k = keyOctal[i % keyOctal.length]; // 循环使用密钥
+                const pDec = p.isdigit() ? parseInt(p, 8) : 0;
+                const kDec = k.isdigit() ? parseInt(k, 8) : 0;
+                const xorDec = pDec ^ kDec;
+                const xorOct = xorDec.toString(8);
+                result.push(xorOct);
+            }
+            return result.join('');
+        }
+
+        function getCyclicKey(octalLen) {
+            const keyOctal = getKeyOctal();
+            // 循环截取/重复密钥，直到长度匹配
+            let cyclicKey = '';
+            while (cyclicKey.length < octalLen) {
+                cyclicKey += keyOctal;
+            }
+            return cyclicKey.substring(0, octalLen);
+        }
+
+        // 辅助函数：检查字符是否为数字
+        String.prototype.isdigit = function() {
+            return /^\d$/.test(this);
+        };
+
+        // ===================== 加密/解密主函数 =====================
+        function encrypt(plainText) {
+            const startTime = performance.now();
+            
+            // 1. 明文→UTF-8→八进制字符串
+            const plainOctal = strToOctal(plainText);
+            if (!plainOctal) {
+                return ["", {}, 1.0, 0, 0, 0];
+            }
+            
+            // 2. 生成循环密钥
+            const cyclicKey = getCyclicKey(plainOctal.length);
+            
+            // 3. 异或加密
+            const xorOctalStr = xorOctal(plainOctal, cyclicKey);
+            
+            // 4. 哈夫曼编码
+            const [huffEncoded, huffmanKey] = huffmanEncode(xorOctalStr);
+            
+            // 5. 二进制转八进制
+            let octalEncoded = '';
+            // 确保长度是3的倍数
+            let paddedEncoded = huffEncoded;
+            while (paddedEncoded.length % 3 !== 0) {
+                paddedEncoded += '0';
+            }
+            // 每3位二进制转换为1位八进制
+            for (let i = 0; i < paddedEncoded.length; i += 3) {
+                const binaryChunk = paddedEncoded.substring(i, i + 3);
+                const octalDigit = parseInt(binaryChunk, 2).toString(8);
+                octalEncoded += octalDigit;
+            }
+            
+            // 6. 字符映射（0-7→狐拾一之异界神域）
+            let finalCipher = '';
+            for (const c of octalEncoded) {
+                if (CHAR_MAP.hasOwnProperty(c)) {
+                    finalCipher += CHAR_MAP[c];
+                }
+            }
+            
+            // 计算压缩率
+            const originalLen = new Blob([plainText]).size;
+            const encodedLen = huffEncoded.length;
+            const compressionRatio = encodedLen > 0 ? (originalLen * 8) / encodedLen : 1.0;
+            
+            const endTime = performance.now();
+            const encryptTime = Math.round(endTime - startTime);
+            
+            return [finalCipher, huffmanKey, compressionRatio, originalLen, encodedLen, octalEncoded.length, encryptTime];
+        }
+
+        function decrypt(cipherText, huffmanKey) {
+            const startTime = performance.now();
+            
+            // 1. 过滤空格+字符映射还原（狐拾一之异界神域→0-7）
+            const cleanedCipher = cipherText.replace(/\s/g, '');
+            
+            const octalEncodedList = [];
+            for (const c of cleanedCipher) {
+                if (REVERSE_CHAR_MAP.hasOwnProperty(c)) {
+                    octalEncodedList.push(REVERSE_CHAR_MAP[c]);
+                }
+            }
+            
+            const octalEncoded = octalEncodedList.join('');
+            
+            // 2. 八进制转二进制
+            let binaryEncoded = '';
+            for (const c of octalEncoded) {
+                const octalDigit = parseInt(c, 8);
+                const binaryChunk = octalDigit.toString(2).padStart(3, '0');
+                binaryEncoded += binaryChunk;
+            }
+            
+            // 3. 哈夫曼解码
+            const xorOctalStr = huffmanDecode(binaryEncoded, huffmanKey);
+            
+            // 3. 生成循环密钥（长度与异或后的八进制一致）
+            const cyclicKey = getCyclicKey(xorOctalStr.length);
+            
+            // 4. 逆异或
+            const plainOctal = xorOctal(xorOctalStr, cyclicKey);
+            
+            // 5. 八进制→UTF-8→明文
+            const plainText = octalToStr(plainOctal);
+            
+            const endTime = performance.now();
+            const decryptTime = Math.round(endTime - startTime);
+            
+            return [plainText, decryptTime];
+        }
+
+        // ===================== 辅助函数：美化秘钥展示 =====================
+        function formatHuffmanKey(huffmanKey) {
+            if (!huffmanKey || Object.keys(huffmanKey).length === 0) {
+                return "{}";
+            }
+            // 按字符排序后展示
+            const sortedKeys = Object.keys(huffmanKey).sort();
+            const keyValuePairs = sortedKeys.map(k => `'${k}':'${huffmanKey[k]}'`);
+            return `{${keyValuePairs.join(', ')}}`;
+        }
+
+        // ===================== UI交互 =====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 加密按钮点击事件
+            document.getElementById('encrypt-btn').addEventListener('click', function() {
+                const plainText = document.getElementById('encrypt-input').value.trim();
+                if (!plainText) {
+                    showNotification('warning', '请输入要加密的文本');
+                    return;
+                }
+                
+                try {
+                    const [cipherText, huffmanKey, compressionRatio, originalLen, encodedLen, octalLen, encryptTime] = encrypt(plainText);
+                    
+                    // 显示结果
+                    document.getElementById('cipher-text').textContent = cipherText;
+                    document.getElementById('huffman-key').textContent = formatHuffmanKey(huffmanKey);
+                    document.getElementById('original-size').textContent = `${originalLen} 字节`;
+                    document.getElementById('encoded-size').textContent = `${encodedLen} 位 (${octalLen} 八进制位)`;
+                    document.getElementById('compression-ratio').textContent = `${compressionRatio.toFixed(2)}x`;
+                    document.getElementById('encrypt-time').textContent = `${encryptTime} ms`;
+                    
+                    showNotification('success', '加密成功！');
+                } catch (error) {
+                    console.error('加密失败:', error);
+                    showNotification('error', '加密失败，请检查输入并重试');
+                }
+            });
+            
+            // 解密按钮点击事件
+            document.getElementById('decrypt-btn').addEventListener('click', function() {
+                const cipherText = document.getElementById('decrypt-input').value.trim();
+                const keyInput = document.getElementById('key-input').value.trim();
+                
+                if (!cipherText) {
+                    showNotification('warning', '请输入要解密的密文');
+                    return;
+                }
+                
+                if (!keyInput) {
+                    showNotification('warning', '请输入哈夫曼密钥');
+                    return;
+                }
+                
+                try {
+                    // 解析哈夫曼密钥
+                    let huffmanKey;
+                    try {
+                        // 尝试直接解析
+                        huffmanKey = JSON.parse(keyInput.replace(/'/g, '"'));
+                    } catch (e) {
+                        // 尝试使用更宽松的解析方式
+                        huffmanKey = parseHuffmanKey(keyInput);
+                    }
+                    
+                    const [plainText, decryptTime] = decrypt(cipherText, huffmanKey);
+                    
+                    // 显示结果
+                    document.getElementById('plain-text').textContent = plainText;
+                    document.getElementById('decrypt-time').textContent = `${decryptTime} ms`;
+                    document.getElementById('decrypt-status').textContent = '成功';
+                    document.getElementById('decrypt-status').className = 'text-lg font-semibold text-green-600 dark:text-green-400';
+                    
+                    showNotification('success', '解密成功！');
+                } catch (error) {
+                    console.error('解密失败:', error);
+                    document.getElementById('decrypt-status').textContent = '失败';
+                    document.getElementById('decrypt-status').className = 'text-lg font-semibold text-red-600 dark:text-red-400';
+                    showNotification('error', '解密失败，请检查输入的密文和密钥是否正确');
+                }
+            });
+            
+            // 复制按钮点击事件
+            document.getElementById('copy-cipher').addEventListener('click', function() {
+                const text = document.getElementById('cipher-text').textContent;
+                copyToClipboard(text, '密文已复制到剪贴板');
+            });
+            
+            document.getElementById('copy-key').addEventListener('click', function() {
+                const text = document.getElementById('huffman-key').textContent;
+                copyToClipboard(text, '密钥已复制到剪贴板');
+            });
+            
+            document.getElementById('copy-plain').addEventListener('click', function() {
+                const text = document.getElementById('plain-text').textContent;
+                copyToClipboard(text, '明文已复制到剪贴板');
+            });
+            
+            // 辅助函数：复制到剪贴板
+            function copyToClipboard(text, successMessage) {
+                if (!text) {
+                    showNotification('warning', '没有可复制的内容');
+                    return;
+                }
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    showNotification('success', successMessage);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    showNotification('error', '复制失败，请手动复制');
+                });
+            }
+            
+            // 辅助函数：显示通知
+            function showNotification(type, message) {
+                const notification = document.getElementById('notification');
+                const icon = document.getElementById('notification-icon');
+                const messageEl = document.getElementById('notification-message');
+                
+                // 设置图标和颜色
+                switch (type) {
+                    case 'success':
+                        icon.className = 'mr-3 text-lg text-green-500';
+                        icon.innerHTML = '<i class="fa fa-check-circle"></i>';
+                        break;
+                    case 'error':
+                        icon.className = 'mr-3 text-lg text-red-500';
+                        icon.innerHTML = '<i class="fa fa-times-circle"></i>';
+                        break;
+                    case 'warning':
+                        icon.className = 'mr-3 text-lg text-yellow-500';
+                        icon.innerHTML = '<i class="fa fa-exclamation-triangle"></i>';
+                        break;
+                    default:
+                        icon.className = 'mr-3 text-lg text-blue-500';
+                        icon.innerHTML = '<i class="fa fa-info-circle"></i>';
+                }
+                
+                messageEl.textContent = message;
+                
+                // 显示通知
+                notification.classList.remove('translate-x-full');
+                
+                // 3秒后隐藏
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                }, 3000);
+            }
+            
+            // 辅助函数：解析哈夫曼密钥（更宽松的解析方式）
+            function parseHuffmanKey(keyStr) {
+                const key = {};
+                // 移除首尾的大括号
+                const innerStr = keyStr.trim().replace(/^{|}$/g, '');
+                // 按逗号分割
+                const pairs = innerStr.split(',');
+                for (const pair of pairs) {
+                    const [k, v] = pair.split(':').map(s => s.trim().replace(/['"]/g, ''));
+                    if (k && v) {
+                        key[k] = v;
+                    }
+                }
+                return key;
+            }
+        });
+    </script>
+</body>
+</html>
